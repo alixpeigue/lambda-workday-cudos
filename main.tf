@@ -34,7 +34,7 @@ locals {
 resource "null_resource" "lambda_makepkg" {
   triggers = {
     requirements = filesha1("requirements.txt")
-    source = file("workday_cudos_update.py")
+    source       = file("workday_cudos_update.py")
   }
   provisioner "local-exec" {
     command = <<EOT
@@ -45,7 +45,7 @@ resource "null_resource" "lambda_makepkg" {
 }
 
 // - Policy
-/*data "aws_iam_policy_document" "projectinfo_lambda_policy" {
+data "aws_iam_policy_document" "projectinfo_lambda_policy" {
   statement {
     effect = "Allow"
     principals {
@@ -116,4 +116,3 @@ module "vpc" {
   intra_subnets = ["10.10.101.0/24"]
 
 }
-*/
