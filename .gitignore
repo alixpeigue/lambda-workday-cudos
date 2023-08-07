@@ -32,3 +32,9 @@ override.tf.json
 # Ignore CLI configuration files
 .terraformrc
 terraform.rc
+
+# All hcl locks
+*.lock.hcl
+
+# Python virtualenv
+**/venv/*
