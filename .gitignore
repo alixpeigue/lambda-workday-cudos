@@ -38,3 +38,9 @@ terraform.rc
 
 # Python virtualenv
 **/venv/*
+
+# Package folder
+package/*
+
+#Archives
+**/*.zip
