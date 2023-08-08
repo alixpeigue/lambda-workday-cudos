@@ -34,7 +34,7 @@ locals {
 resource "null_resource" "lambda_makepkg" {
   triggers = {
     requirements = filesha1("requirements.txt")
-    source       = file("workday_cudos_update.py")
+    source       = filesha1("workday_cudos_update.py")
   }
   provisioner "local-exec" {
     command = <<EOT
