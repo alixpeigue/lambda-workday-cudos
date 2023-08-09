@@ -45,7 +45,7 @@ resource "null_resource" "lambda_makepkg" {
 }
 
 // - Policy
-data "aws_iam_policy_document" "projectinfo_lambda_policy" {
+data "aws_iam_policy_document" "changerole_lambda_policy" {
   statement {
     effect = "Allow"
     principals {
@@ -57,9 +57,38 @@ data "aws_iam_policy_document" "projectinfo_lambda_policy" {
 }
 
 resource "aws_iam_role" "projectinfo_lambda_iam" {
-  name                 = "limited-projectinfo_lambda_iam"
-  permissions_boundary = "arn:aws:iam::135225040694:policy/SysopsPermissionsBoundary"
-  assume_role_policy   = data.aws_iam_policy_document.projectinfo_lambda_policy.json
+  name = "limited-projectinfo_lambda_iam"
+  //permissions_boundary = "arn:aws:iam::135225040694:policy/SysopsPermissionsBoundary"
+  assume_role_policy = data.aws_iam_policy_document.changerole_lambda_policy.json
+
+}
+
+data "aws_iam_policy_document" "vpc_lambda_policy_document" {
+  statement {
+    effect = "Allow"
+    # principals {
+    #   identifiers = ["lambda.amazonaws.com"]
+    #   type        = "Service"
+    # }
+    actions = [
+      "ec2:DescribeNetworkInterfaces",
+      "ec2:CreateNetworkInterface",
+      "ec2:DeleteNetworkInterface",
+      "ec2:DescribeInstances",
+      "ec2:AttachNetworkInterface"
+    ]
+    resources = ["*"]
+  }
+}
+
+resource "aws_iam_policy" "vpc_lambda_policy" {
+  name   = "limited-vpc-iam-policy-for-workday-cudos-update-lambda"
+  policy = data.aws_iam_policy_document.vpc_lambda_policy_document.json
+}
+
+resource "aws_iam_role_policy_attachment" "attach_policy_to_role" {
+  role       = aws_iam_role.projectinfo_lambda_iam.name
+  policy_arn = aws_iam_policy.vpc_lambda_policy.arn
 }
 
 // - Lambda
@@ -114,6 +143,6 @@ module "vpc" {
 
   name          = local.name
   azs           = ["eu-west-1a"]
-  intra_subnets = ["10.10.101.0/24"]
+  intra_subnets = ["10.0.0.0/24"]
 
 }
