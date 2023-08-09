@@ -79,6 +79,7 @@ resource "aws_lambda_function" "project_infos" {
       user     = module.db.db_instance_username
       db       = module.db.db_instance_name
       host     = module.db.db_instance_address
+      port     = module.db.db_instance_port
     }
   }
 }
