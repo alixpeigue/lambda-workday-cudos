@@ -66,10 +66,6 @@ resource "aws_iam_role" "projectinfo_lambda_iam" {
 data "aws_iam_policy_document" "vpc_lambda_policy_document" {
   statement {
     effect = "Allow"
-    # principals {
-    #   identifiers = ["lambda.amazonaws.com"]
-    #   type        = "Service"
-    # }
     actions = [
       "ec2:DescribeNetworkInterfaces",
       "ec2:CreateNetworkInterface",
@@ -97,7 +93,7 @@ resource "aws_lambda_function" "project_infos" {
   filename      = data.archive_file.projectinfos_zip_file.output_path
   role          = aws_iam_role.projectinfo_lambda_iam.arn
   handler       = "workday_cudos_update.lambda_handler"
-  runtime       = "python3.11"
+  runtime       = "python3.10"
   vpc_config {
     subnet_ids         = module.vpc.intra_subnets
     security_group_ids = [module.vpc.default_security_group_id]
@@ -111,6 +107,26 @@ resource "aws_lambda_function" "project_infos" {
       port     = module.db.db_instance_port
     }
   }
+}
+
+/// EvenBridge Event
+
+resource "aws_cloudwatch_event_rule" "workday_replication_lambda_event_rule" {
+  name                = "daily-trigger-for-workday-replication"
+  schedule_expression = "rate(24 hours)"
+}
+
+resource "aws_cloudwatch_event_target" "workday_replication_lambda_target" {
+  arn  = aws_lambda_function.project_infos.arn
+  rule = aws_cloudwatch_event_rule.workday_replication_lambda_event_rule.name
+}
+
+resource "aws_lambda_permission" "allow_cloudwatch_invoke_lambda" {
+  statement_id  = "AllowExecutionFromCloudWatch"
+  action        = "lambda:InvokeFunction"
+  function_name = aws_lambda_function.project_infos.function_name
+  principal     = "events.amazonaws.com"
+  source_arn    = aws_cloudwatch_event_rule.workday_replication_lambda_event_rule.arn
 }
 
 /////// RDS
