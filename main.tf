@@ -82,9 +82,31 @@ resource "aws_iam_policy" "vpc_lambda_policy" {
   policy = data.aws_iam_policy_document.vpc_lambda_policy_document.json
 }
 
-resource "aws_iam_role_policy_attachment" "attach_policy_to_role" {
+resource "aws_iam_role_policy_attachment" "attach_vpc_policy_to_role" {
   role       = aws_iam_role.projectinfo_lambda_iam.name
   policy_arn = aws_iam_policy.vpc_lambda_policy.arn
+}
+
+data "aws_iam_policy_document" "cloudwatch_logs_lambda_policy_document" {
+  statement {
+    effect = "Allow"
+    actions = [
+      "logs:CreateLogGroup",
+      "logs:CreateLogStream",
+      "logs:PutLogEvents"
+    ]
+    resources = ["*"]
+  }
+}
+
+resource "aws_iam_policy" "cloudwatch_logs_lambda_policy" {
+  name   = "limited-cloudwatch-logs-policy-for-workday-cudos-update-lambda"
+  policy = data.aws_iam_policy_document.cloudwatch_logs_lambda_policy_document.json
+}
+
+resource "aws_iam_role_policy_attachment" "attach_cloudwatch_to_role" {
+  role       = aws_iam_role.projectinfo_lambda_iam.name
+  policy_arn = aws_iam_policy.cloudwatch_logs_lambda_policy.arn
 }
 
 // - Lambda
@@ -152,6 +174,8 @@ module "db" {
 
   multi_az             = false
   db_subnet_group_name = module.vpc.database_subnet_group
+  subnet_ids = module.vpc.database_subnets
+  //vpc_security_group_ids = [module.vpc.default_security_group_id]
 }
 
 module "vpc" {
