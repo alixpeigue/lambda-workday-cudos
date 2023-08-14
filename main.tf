@@ -133,6 +133,8 @@ resource "aws_lambda_function" "project_infos" {
       port     = aws_db_instance.db.port
     }
   }
+
+  depends_on = [data.archive_file.projectinfos_zip_file]
 }
 
 /// EvenBridge Event
@@ -182,22 +184,22 @@ resource "aws_db_subnet_group" "db_subnet_group" {
   name       = "workday-replication-db-subnet-group"
 }
 
-resource "aws_security_group_rule" "ingress_rule"{
-  type = "ingress"
-  from_port = 5432
-  to_port = 5432
+resource "aws_security_group_rule" "ingress_rule" {
+  type              = "ingress"
+  from_port         = 5432
+  to_port           = 5432
   security_group_id = module.vpc.default_security_group_id
-  self = true
-  protocol = "TCP"
+  self              = true
+  protocol          = "TCP"
 }
 
-resource "aws_security_group_rule" "egress_rule"{
-  type = "egress"
-  from_port = 5432
-  to_port = 5432
+resource "aws_security_group_rule" "egress_rule" {
+  type              = "egress"
+  from_port         = 5432
+  to_port           = 5432
   security_group_id = module.vpc.default_security_group_id
-  self = true
-  protocol = "TCP"
+  self              = true
+  protocol          = "TCP"
 }
 
 module "vpc" {
@@ -209,4 +211,13 @@ module "vpc" {
   azs             = local.azs
   private_subnets = [for k, v in local.azs : cidrsubnet(local.vpc_cidr, 4, k)]
 
+}
+
+// Allow lambda to access internet
+
+resource "aws_internet_gateway" "gateway" {
+  vpc_id = module.vpc.vpc_id
+  tags = {
+    Name = "workday-replication-vpc-internet-gateway"
+  }
 }
