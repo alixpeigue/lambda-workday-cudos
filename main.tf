@@ -27,8 +27,12 @@ data "archive_file" "projectinfos_zip_file" {
   depends_on  = [null_resource.lambda_makepkg]
 }
 
+data "aws_availability_zones" "available" {}
+
 locals {
-  name = "workday-replication"
+  vpc_cidr = "10.0.0.0/16"
+  name     = "workday-replication"
+  azs      = slice(data.aws_availability_zones.available.names, 0, 3)
 }
 
 resource "null_resource" "lambda_makepkg" {
@@ -117,16 +121,16 @@ resource "aws_lambda_function" "project_infos" {
   handler       = "workday_cudos_update.lambda_handler"
   runtime       = "python3.10"
   vpc_config {
-    subnet_ids         = module.vpc.intra_subnets
+    subnet_ids         = module.vpc.private_subnets
     security_group_ids = [module.vpc.default_security_group_id]
   }
   environment {
     variables = {
       password = "Test123!"
-      user     = module.db.db_instance_username
-      db       = module.db.db_instance_name
-      host     = module.db.db_instance_address
-      port     = module.db.db_instance_port
+      user     = aws_db_instance.db.username
+      db       = aws_db_instance.db.db_name
+      host     = aws_db_instance.db.address
+      port     = aws_db_instance.db.port
     }
   }
 }
@@ -153,36 +157,38 @@ resource "aws_lambda_permission" "allow_cloudwatch_invoke_lambda" {
 
 /////// RDS
 
-module "db" {
-  source = "terraform-aws-modules/rds/aws"
+resource "aws_db_instance" "db" {
+  identifier     = "workday-replication-db"
+  engine         = "postgres"
+  engine_version = "14"
+  instance_class = "db.t3.micro"
 
-  identifier = "workday-replication-db"
-
-  engine               = "postgres"
-  engine_version       = "14"
-  family               = "postgres14"
-  major_engine_version = "14"
-  instance_class       = "db.t3.micro"
-
-  allocated_storage     = 5
-  max_allocated_storage = 10
+  allocated_storage = "5"
 
   db_name  = "workdayReplicationDB"
-  username = "test_user"
-  password = "Test123!"
+  username = "postgres"
+  password = "postgres"
   port     = 5432
 
-  multi_az             = false
-  db_subnet_group_name = module.vpc.database_subnet_group
-  subnet_ids = module.vpc.database_subnets
-  //vpc_security_group_ids = [module.vpc.default_security_group_id]
+  multi_az = false
+
+  skip_final_snapshot    = true
+  db_subnet_group_name   = aws_db_subnet_group.db_subnet_group.name
+  vpc_security_group_ids = [module.vpc.default_security_group_id]
+}
+
+resource "aws_db_subnet_group" "db_subnet_group" {
+  subnet_ids = module.vpc.private_subnets
+  name       = "workday-replication-db-subnet-group"
 }
 
 module "vpc" {
   source = "terraform-aws-modules/vpc/aws"
 
-  name          = local.name
-  azs           = ["eu-west-1a"]
-  intra_subnets = ["10.0.0.0/24"]
+  cidr = local.vpc_cidr
+  name = local.name
+
+  azs             = local.azs
+  private_subnets = [for k, v in local.azs : cidrsubnet(local.vpc_cidr, 4, k)]
 
 }
