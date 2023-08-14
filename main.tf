@@ -126,7 +126,7 @@ resource "aws_lambda_function" "project_infos" {
   }
   environment {
     variables = {
-      password = "Test123!"
+      password = aws_db_instance.db.password
       user     = aws_db_instance.db.username
       db       = aws_db_instance.db.db_name
       host     = aws_db_instance.db.address
@@ -180,6 +180,24 @@ resource "aws_db_instance" "db" {
 resource "aws_db_subnet_group" "db_subnet_group" {
   subnet_ids = module.vpc.private_subnets
   name       = "workday-replication-db-subnet-group"
+}
+
+resource "aws_security_group_rule" "ingress_rule"{
+  type = "ingress"
+  from_port = 5432
+  to_port = 5432
+  security_group_id = module.vpc.default_security_group_id
+  self = true
+  protocol = "TCP"
+}
+
+resource "aws_security_group_rule" "egress_rule"{
+  type = "egress"
+  from_port = 5432
+  to_port = 5432
+  security_group_id = module.vpc.default_security_group_id
+  self = true
+  protocol = "TCP"
 }
 
 module "vpc" {
