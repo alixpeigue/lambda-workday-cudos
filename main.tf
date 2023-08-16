@@ -6,12 +6,19 @@ terraform {
   }
 }
 
+locals {
+  vpc_cidr = "10.0.0.0/16"
+  name     = "workday-replication"
+  azs      = slice(data.aws_availability_zones.available.names, 0, 3)
+  region   = "eu-west-1"
+}
+
 // Archive
 provider "archive" {}
 
 // AWS :
 provider "aws" {
-  region = "eu-west-1"
+  region = local.region
   default_tags {
     tags = {
       Production = "False"
@@ -28,12 +35,6 @@ data "archive_file" "projectinfos_zip_file" {
 }
 
 data "aws_availability_zones" "available" {}
-
-locals {
-  vpc_cidr = "10.0.0.0/16"
-  name     = "workday-replication"
-  azs      = slice(data.aws_availability_zones.available.names, 0, 3)
-}
 
 resource "null_resource" "lambda_makepkg" {
   triggers = {
@@ -139,23 +140,23 @@ resource "aws_lambda_function" "project_infos" {
 
 /// EvenBridge Event
 
-resource "aws_cloudwatch_event_rule" "workday_replication_lambda_event_rule" {
-  name                = "daily-trigger-for-workday-replication"
-  schedule_expression = "rate(24 hours)"
-}
+# resource "aws_cloudwatch_event_rule" "workday_replication_lambda_event_rule" {
+#   name                = "daily-trigger-for-workday-replication"
+#   schedule_expression = "rate(24 hours)"
+# }
 
-resource "aws_cloudwatch_event_target" "workday_replication_lambda_target" {
-  arn  = aws_lambda_function.project_infos.arn
-  rule = aws_cloudwatch_event_rule.workday_replication_lambda_event_rule.name
-}
+# resource "aws_cloudwatch_event_target" "workday_replication_lambda_target" {
+#   arn  = aws_lambda_function.project_infos.arn
+#   rule = aws_cloudwatch_event_rule.workday_replication_lambda_event_rule.name
+# }
 
-resource "aws_lambda_permission" "allow_cloudwatch_invoke_lambda" {
-  statement_id  = "AllowExecutionFromCloudWatch"
-  action        = "lambda:InvokeFunction"
-  function_name = aws_lambda_function.project_infos.function_name
-  principal     = "events.amazonaws.com"
-  source_arn    = aws_cloudwatch_event_rule.workday_replication_lambda_event_rule.arn
-}
+# resource "aws_lambda_permission" "allow_cloudwatch_invoke_lambda" {
+#   statement_id  = "AllowExecutionFromCloudWatch"
+#   action        = "lambda:InvokeFunction"
+#   function_name = aws_lambda_function.project_infos.function_name
+#   principal     = "events.amazonaws.com"
+#   source_arn    = aws_cloudwatch_event_rule.workday_replication_lambda_event_rule.arn
+# }
 
 /////// RDS
 
@@ -213,11 +214,36 @@ module "vpc" {
 
 }
 
+// SQS
+
+resource "aws_sqs_queue" "queue" {
+  name                      = "worday-replication-queue"
+  message_retention_seconds = 3600
+}
+
+resource "aws_lambda_event_source_mapping" "event_source_mapping" {
+  event_source_arn = aws_sqs_queue.queue.arn
+  function_name    = aws_lambda_function.project_infos.function_name
+}
+
+resource "aws_iam_role_policy_attachment" "lambda_sqs_role_policy" {
+  role       = aws_iam_role.projectinfo_lambda_iam.name
+  policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaSQSQueueExecutionRole"
+}
+
+resource "aws_vpc_endpoint" "sqs_vpc_interface" {
+  vpc_id             = module.vpc.vpc_id
+  vpc_endpoint_type  = "Interface"
+  service_name       = "com.amazonaws.${local.region}.sqs"
+  subnet_ids         = module.vpc.private_subnets
+  security_group_ids = [module.vpc.default_security_group_id]
+}
+
 // Allow lambda to access internet
 
-resource "aws_internet_gateway" "gateway" {
-  vpc_id = module.vpc.vpc_id
-  tags = {
-    Name = "workday-replication-vpc-internet-gateway"
-  }
-}
+# resource "aws_internet_gateway" "gateway" {
+#   vpc_id = module.vpc.vpc_id
+#   tags = {
+#     Name = "workday-replication-vpc-internet-gateway"
+#   }
+# }
