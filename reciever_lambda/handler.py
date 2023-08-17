@@ -1,6 +1,4 @@
-import boto3
 import psycopg2
-import requests
 import os
 import json
 
@@ -9,12 +7,6 @@ user = os.environ["user"]
 password = os.environ["password"]
 host = os.environ["host"]
 port = int(os.environ["port"])
-
-# dbname = "postgres"
-# user = "postgres"
-# password = "password"
-# host = "127.0.0.1"
-# port = 5432
 
 def create_table_if_not_exists(conn):
     with conn.cursor() as cur:
@@ -53,5 +45,3 @@ def lambda_handler(event, context):
 
     conn.close()
     print("Done")
-
-# lambda_handler(None, None)
