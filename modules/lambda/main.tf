@@ -44,7 +44,7 @@ data "archive_file" "this" {
 resource "aws_lambda_function" "this" {
   function_name = var.function_name
   filename      = data.archive_file.this.output_path
-  role          = var.role
+  role          = var.role != null ? var.role : aws_iam_role.this[0].arn
   handler       = var.handler
   runtime       = var.runtime
   vpc_config {
@@ -54,4 +54,31 @@ resource "aws_lambda_function" "this" {
   environment {
     variables = var.environment_variables
   }
+  tags = var.tags
+}
+
+// Role
+
+data "aws_iam_policy_document" "changerole_lambda_policy" {
+  statement {
+    effect = "Allow"
+    principals {
+      identifiers = ["lambda.amazonaws.com"]
+      type        = "Service"
+    }
+    actions = ["sts:AssumeRole"]
+  }
+}
+
+resource "aws_iam_role" "this" {
+  count              = var.role == null ? 1 : 0
+  name               = var.role_name != null ? var.role_name : "${var.function_name}-execution-role"
+  assume_role_policy = data.aws_iam_policy_document.changerole_lambda_policy.json
+}
+
+resource "aws_iam_role_policy_attachment" "this" {
+  for_each = toset(var.policy_arns)
+
+  role       = aws_iam_role.this[0].name
+  policy_arn = each.value
 }

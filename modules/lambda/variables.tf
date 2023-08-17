@@ -12,6 +12,7 @@ variable "scripts" {
 variable "role" {
   description = "lambda role"
   type        = string
+  default     = null
 }
 
 variable "function_name" {
@@ -47,6 +48,24 @@ variable "vpc_security_group_ids" {
 }
 
 variable "archive_filename" {
-  description = "archive_filename"
+  description = "source archive filename"
   type        = string
+}
+
+variable "role_name" {
+  description = "created execution role name"
+  type        = string
+  default     = null
+}
+
+variable "policy_arns" {
+  description = "list of arn of policies to attach to created execution role"
+  type        = list(string)
+  default     = []
+}
+
+variable "tags" {
+  description = "tags for lambda function"
+  type        = map(string)
+  default     = {}
 }

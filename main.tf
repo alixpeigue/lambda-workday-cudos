@@ -25,25 +25,6 @@ provider "aws" {
 
 data "aws_availability_zones" "available" {}
 
-// - Policy
-data "aws_iam_policy_document" "changerole_lambda_policy" {
-  statement {
-    effect = "Allow"
-    principals {
-      identifiers = ["lambda.amazonaws.com"]
-      type        = "Service"
-    }
-    actions = ["sts:AssumeRole"]
-  }
-}
-
-resource "aws_iam_role" "projectinfo_lambda_iam" {
-  name = "limited-projectinfo_lambda_iam"
-  //permissions_boundary = "arn:aws:iam::135225040694:policy/SysopsPermissionsBoundary"
-  assume_role_policy = data.aws_iam_policy_document.changerole_lambda_policy.json
-
-}
-
 data "aws_iam_policy_document" "vpc_lambda_policy_document" {
   statement {
     effect = "Allow"
@@ -63,16 +44,6 @@ resource "aws_iam_policy" "vpc_lambda_policy" {
   policy = data.aws_iam_policy_document.vpc_lambda_policy_document.json
 }
 
-resource "aws_iam_role_policy_attachment" "attach_vpc_policy_to_role" {
-  role       = aws_iam_role.projectinfo_lambda_iam.name
-  policy_arn = aws_iam_policy.vpc_lambda_policy.arn
-}
-
-resource "aws_iam_role_policy_attachment" "attach_cloudwatch_to_role" {
-  role       = aws_iam_role.projectinfo_lambda_iam.name
-  policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
-}
-
 // - Lambda
 
 module "reciever_lambda" {
@@ -86,7 +57,11 @@ module "reciever_lambda" {
   runtime          = "python3.10"
   archive_filename = "reciever_sources"
 
-  role = aws_iam_role.projectinfo_lambda_iam.arn
+  policy_arns = [
+    aws_iam_policy.vpc_lambda_policy.arn,
+    "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole",
+    "arn:aws:iam::aws:policy/service-role/AWSLambdaSQSQueueExecutionRole"
+  ]
 
   vpc_subnet_ids         = module.vpc.private_subnets
   vpc_security_group_ids = [module.vpc.default_security_group_id]
@@ -100,21 +75,6 @@ module "reciever_lambda" {
   }
 }
 
-resource "aws_iam_role" "lambda_get_role" {
-  name               = "aws-get-role"
-  assume_role_policy = data.aws_iam_policy_document.changerole_lambda_policy.json
-}
-
-resource "aws_iam_role_policy_attachment" "vpc_attachement" {
-  role       = aws_iam_role.lambda_get_role.name
-  policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
-}
-
-resource "aws_iam_role_policy_attachment" "attach_vpc_policy_to_role_for_get" {
-  role       = aws_iam_role.lambda_get_role.name
-  policy_arn = aws_iam_policy.vpc_lambda_policy.arn
-}
-
 module "emitter_lambda" {
   source = "./modules/lambda"
 
@@ -126,7 +86,10 @@ module "emitter_lambda" {
   runtime          = "python3.10"
   archive_filename = "emitter_sources"
 
-  role = aws_iam_role.lambda_get_role.arn
+  policy_arns = [
+    "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole",
+    "arn:aws:iam::aws:policy/AmazonSQSFullAccess"
+  ]
 
   environment_variables = {
     sqs = aws_sqs_queue.queue.url
@@ -155,6 +118,8 @@ resource "aws_db_instance" "db" {
   vpc_security_group_ids = [module.vpc.default_security_group_id]
 }
 
+/////// VPC
+
 resource "aws_db_subnet_group" "db_subnet_group" {
   subnet_ids = module.vpc.private_subnets
   name       = "workday-replication-db-subnet-group"
@@ -182,7 +147,7 @@ module "vpc" {
   source = "terraform-aws-modules/vpc/aws"
 
   cidr = local.vpc_cidr
-  name = local.name
+  name = "workday-replication-vpc"
 
   azs             = local.azs
   private_subnets = [for k, v in local.azs : cidrsubnet(local.vpc_cidr, 4, k)]
@@ -199,16 +164,6 @@ resource "aws_sqs_queue" "queue" {
 resource "aws_lambda_event_source_mapping" "event_source_mapping" {
   event_source_arn = aws_sqs_queue.queue.arn
   function_name    = module.reciever_lambda.function_name
-}
-
-resource "aws_iam_role_policy_attachment" "lambda_sqs_role_policy" {
-  role       = aws_iam_role.projectinfo_lambda_iam.name
-  policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaSQSQueueExecutionRole"
-}
-
-resource "aws_iam_role_policy_attachment" "lambda_get_sqs_role_policy" {
-  role       = aws_iam_role.lambda_get_role.name
-  policy_arn = "arn:aws:iam::aws:policy/AmazonSQSFullAccess"
 }
 
 resource "aws_vpc_endpoint" "sqs_vpc_interface" {
