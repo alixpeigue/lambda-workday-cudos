@@ -1,50 +1,52 @@
 variable "requirements" {
-    description = "pip requirements file"
-    default = null
-    type = string
+  description = "pip requirements file"
+  default     = null
+  type        = string
 }
 
 variable "scripts" {
-    description = "python script file"
-    type = list(string)
+  description = "python script file"
+  type        = list(string)
 }
 
 variable "role" {
-    description = "lambda role"
-    type = string
+  description = "lambda role"
+  type        = string
 }
 
 variable "function_name" {
-    description = "function name"
-    type = string
+  description = "function name"
+  type        = string
 }
 
 variable "handler" {
-    description = "function handler"
-    type = string
+  description = "function handler"
+  type        = string
 }
 
 variable "runtime" {
-    description = "runtime"
-    type = string
+  description = "runtime"
+  type        = string
 }
 
 variable "environment_variables" {
-    description = "environment variables"
-    type = map(string, string)
+  description = "environment variables"
+  type        = map(any)
 }
 
 variable "vpc_subnet_ids" {
-    description = "list of subnet ids"
-    type = list(string)
+  description = "list of subnet ids"
+  type        = list(string)
+  default     = []
 }
 
 variable "vpc_security_group_ids" {
-    description = "list of security group ids"
-    type = list(string)
+  description = "list of security group ids"
+  type        = list(string)
+  default     = []
 }
 
-variable  "archive_filename" {
-    description = "archive_filename"
-    type = string
+variable "archive_filename" {
+  description = "archive_filename"
+  type        = string
 }

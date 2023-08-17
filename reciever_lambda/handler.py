@@ -38,10 +38,12 @@ def update_or_insert_tuple(conn, data):
         conn.commit()
 
 def lambda_handler(event, context):
-    conn = psycopg2.connect(dbname=dbname, user=user, password=password, host=host, port=port)
-
+    print("started lambda")
     message = json.loads(event['Records'][0]['body'])
     print("Message parsed : ", message)
+
+    conn = psycopg2.connect(dbname=dbname, user=user, password=password, host=host, port=port)
+    print("connected")
 
     create_table_if_not_exists(conn)
     print("table created")

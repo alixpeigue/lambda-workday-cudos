@@ -8,13 +8,9 @@ terraform {
 
 locals {
   vpc_cidr = "10.0.0.0/16"
-  name     = "workday-replication"
   azs      = slice(data.aws_availability_zones.available.names, 0, 3)
   region   = "eu-west-1"
 }
-
-// Archive
-provider "archive" {}
 
 // AWS :
 provider "aws" {
@@ -27,33 +23,7 @@ provider "aws" {
   }
 }
 
-data "archive_file" "workday_update_zip" {
-  type        = "zip"
-  source_file = "workday_update.py"
-  output_path = "workday_update.zip"
-}
-
-data "archive_file" "projectinfos_zip_file" {
-  type        = "zip"
-  source_dir  = "package"
-  output_path = "workday_cudos_update.zip"
-  depends_on  = [null_resource.lambda_makepkg]
-}
-
 data "aws_availability_zones" "available" {}
-
-resource "null_resource" "lambda_makepkg" {
-  triggers = {
-    requirements = filesha1("requirements.txt")
-    source       = filesha1("workday_cudos_update.py")
-  }
-  provisioner "local-exec" {
-    command = <<EOT
-      pip install --upgrade --target ./package -r requirements.txt
-      cp workday_cudos_update.py package/workday_cudos_update.py
-    EOT
-  }
-}
 
 // - Policy
 data "aws_iam_policy_document" "changerole_lambda_policy" {
@@ -98,47 +68,35 @@ resource "aws_iam_role_policy_attachment" "attach_vpc_policy_to_role" {
   policy_arn = aws_iam_policy.vpc_lambda_policy.arn
 }
 
-# data "aws_iam_policy_document" "cloudwatch_logs_lambda_policy_document" {
-#   statement {
-#     effect = "Allow"
-#     actions = [
-#       "logs:CreateLogGroup",
-#       "logs:CreateLogStream",
-#       "logs:PutLogEvents"
-#     ]
-#     resources = ["*"]
-#   }
-# }
-
-# resource "aws_iam_policy" "cloudwatch_logs_lambda_policy" {
-#   name   = "limited-cloudwatch-logs-policy-for-workday-cudos-update-lambda"
-#   policy = data.aws_iam_policy_document.cloudwatch_logs_lambda_policy_document.json
-# }
-
 resource "aws_iam_role_policy_attachment" "attach_cloudwatch_to_role" {
   role       = aws_iam_role.projectinfo_lambda_iam.name
   policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
 }
 
 // - Lambda
-resource "aws_lambda_function" "project_infos" {
-  function_name = local.name
-  filename      = data.archive_file.projectinfos_zip_file.output_path
-  role          = aws_iam_role.projectinfo_lambda_iam.arn
-  handler       = "workday_cudos_update.lambda_handler"
-  runtime       = "python3.10"
-  vpc_config {
-    subnet_ids         = module.vpc.private_subnets
-    security_group_ids = [module.vpc.default_security_group_id]
-  }
-  environment {
-    variables = {
-      password = aws_db_instance.db.password
-      user     = aws_db_instance.db.username
-      db       = aws_db_instance.db.db_name
-      host     = aws_db_instance.db.address
-      port     = aws_db_instance.db.port
-    }
+
+module "reciever_lambda" {
+  source = "./modules/lambda"
+
+  function_name = "workday-cudos-replication-reciever-lambda"
+
+  requirements     = "reciever_lambda/requirements.txt"
+  scripts          = ["reciever_lambda/handler.py"]
+  handler          = "handler.lambda_handler"
+  runtime          = "python3.10"
+  archive_filename = "reciever_sources"
+
+  role = aws_iam_role.projectinfo_lambda_iam.arn
+
+  vpc_subnet_ids         = module.vpc.private_subnets
+  vpc_security_group_ids = [module.vpc.default_security_group_id]
+
+  environment_variables = {
+    password = aws_db_instance.db.password
+    user     = aws_db_instance.db.username
+    db       = aws_db_instance.db.db_name
+    host     = aws_db_instance.db.address
+    port     = aws_db_instance.db.port
   }
 }
 
@@ -157,38 +115,23 @@ resource "aws_iam_role_policy_attachment" "attach_vpc_policy_to_role_for_get" {
   policy_arn = aws_iam_policy.vpc_lambda_policy.arn
 }
 
-resource "aws_lambda_function" "get_project_infos" {
-  function_name = "workday-cudos-replication-get-projects-infos"
-  filename      = data.archive_file.workday_update_zip.output_path
-  role          = aws_iam_role.lambda_get_role.arn
-  handler       = "workday_update.lambda_handler"
-  runtime       = "python3.10"
-  environment {
-    variables = {
-      sqs = aws_sqs_queue.queue.url
-    }
+module "emitter_lambda" {
+  source = "./modules/lambda"
+
+  function_name = "workday-cudos-replication-emitter-lambda"
+
+  requirements     = "emitter_lambda/requirements.txt"
+  scripts          = ["emitter_lambda/handler.py"]
+  handler          = "handler.lambda_handler"
+  runtime          = "python3.10"
+  archive_filename = "emitter_sources"
+
+  role = aws_iam_role.lambda_get_role.arn
+
+  environment_variables = {
+    sqs = aws_sqs_queue.queue.url
   }
 }
-
-/// EvenBridge Event
-
-# resource "aws_cloudwatch_event_rule" "workday_replication_lambda_event_rule" {
-#   name                = "daily-trigger-for-workday-replication"
-#   schedule_expression = "rate(24 hours)"
-# }
-
-# resource "aws_cloudwatch_event_target" "workday_replication_lambda_target" {
-#   arn  = aws_lambda_function.project_infos.arn
-#   rule = aws_cloudwatch_event_rule.workday_replication_lambda_event_rule.name
-# }
-
-# resource "aws_lambda_permission" "allow_cloudwatch_invoke_lambda" {
-#   statement_id  = "AllowExecutionFromCloudWatch"
-#   action        = "lambda:InvokeFunction"
-#   function_name = aws_lambda_function.project_infos.function_name
-#   principal     = "events.amazonaws.com"
-#   source_arn    = aws_cloudwatch_event_rule.workday_replication_lambda_event_rule.arn
-# }
 
 /////// RDS
 
@@ -255,7 +198,7 @@ resource "aws_sqs_queue" "queue" {
 
 resource "aws_lambda_event_source_mapping" "event_source_mapping" {
   event_source_arn = aws_sqs_queue.queue.arn
-  function_name    = aws_lambda_function.project_infos.function_name
+  function_name    = module.reciever_lambda.function_name
 }
 
 resource "aws_iam_role_policy_attachment" "lambda_sqs_role_policy" {
@@ -275,12 +218,3 @@ resource "aws_vpc_endpoint" "sqs_vpc_interface" {
   subnet_ids         = module.vpc.private_subnets
   security_group_ids = [module.vpc.default_security_group_id]
 }
-
-// Allow lambda to access internet
-
-# resource "aws_internet_gateway" "gateway" {
-#   vpc_id = module.vpc.vpc_id
-#   tags = {
-#     Name = "workday-replication-vpc-internet-gateway"
-#   }
-# }

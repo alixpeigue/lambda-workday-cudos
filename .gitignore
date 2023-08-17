@@ -39,8 +39,9 @@ terraform.rc
 # Python virtualenv
 **/venv/*
 
-# Package folder
-package/*
+# Package folders
+**/emitter_sources/*
+**/reciever_sources/*
 
 #Archives
 **/*.zip
