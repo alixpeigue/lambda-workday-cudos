@@ -27,6 +27,12 @@ provider "aws" {
   }
 }
 
+data "archive_file" "workday_update_zip" {
+  type        = "zip"
+  source_file = "workday_update.py"
+  output_path = "workday_update.zip"
+}
+
 data "archive_file" "projectinfos_zip_file" {
   type        = "zip"
   source_dir  = "package"
@@ -92,26 +98,26 @@ resource "aws_iam_role_policy_attachment" "attach_vpc_policy_to_role" {
   policy_arn = aws_iam_policy.vpc_lambda_policy.arn
 }
 
-data "aws_iam_policy_document" "cloudwatch_logs_lambda_policy_document" {
-  statement {
-    effect = "Allow"
-    actions = [
-      "logs:CreateLogGroup",
-      "logs:CreateLogStream",
-      "logs:PutLogEvents"
-    ]
-    resources = ["*"]
-  }
-}
+# data "aws_iam_policy_document" "cloudwatch_logs_lambda_policy_document" {
+#   statement {
+#     effect = "Allow"
+#     actions = [
+#       "logs:CreateLogGroup",
+#       "logs:CreateLogStream",
+#       "logs:PutLogEvents"
+#     ]
+#     resources = ["*"]
+#   }
+# }
 
-resource "aws_iam_policy" "cloudwatch_logs_lambda_policy" {
-  name   = "limited-cloudwatch-logs-policy-for-workday-cudos-update-lambda"
-  policy = data.aws_iam_policy_document.cloudwatch_logs_lambda_policy_document.json
-}
+# resource "aws_iam_policy" "cloudwatch_logs_lambda_policy" {
+#   name   = "limited-cloudwatch-logs-policy-for-workday-cudos-update-lambda"
+#   policy = data.aws_iam_policy_document.cloudwatch_logs_lambda_policy_document.json
+# }
 
 resource "aws_iam_role_policy_attachment" "attach_cloudwatch_to_role" {
   role       = aws_iam_role.projectinfo_lambda_iam.name
-  policy_arn = aws_iam_policy.cloudwatch_logs_lambda_policy.arn
+  policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
 }
 
 // - Lambda
@@ -134,8 +140,34 @@ resource "aws_lambda_function" "project_infos" {
       port     = aws_db_instance.db.port
     }
   }
+}
 
-  depends_on = [data.archive_file.projectinfos_zip_file]
+resource "aws_iam_role" "lambda_get_role" {
+  name               = "aws-get-role"
+  assume_role_policy = data.aws_iam_policy_document.changerole_lambda_policy.json
+}
+
+resource "aws_iam_role_policy_attachment" "vpc_attachement" {
+  role       = aws_iam_role.lambda_get_role.name
+  policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+}
+
+resource "aws_iam_role_policy_attachment" "attach_vpc_policy_to_role_for_get" {
+  role       = aws_iam_role.lambda_get_role.name
+  policy_arn = aws_iam_policy.vpc_lambda_policy.arn
+}
+
+resource "aws_lambda_function" "get_project_infos" {
+  function_name = "workday-cudos-replication-get-projects-infos"
+  filename      = data.archive_file.workday_update_zip.output_path
+  role          = aws_iam_role.lambda_get_role.arn
+  handler       = "workday_update.lambda_handler"
+  runtime       = "python3.10"
+  environment {
+    variables = {
+      sqs = aws_sqs_queue.queue.url
+    }
+  }
 }
 
 /// EvenBridge Event
@@ -229,6 +261,11 @@ resource "aws_lambda_event_source_mapping" "event_source_mapping" {
 resource "aws_iam_role_policy_attachment" "lambda_sqs_role_policy" {
   role       = aws_iam_role.projectinfo_lambda_iam.name
   policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaSQSQueueExecutionRole"
+}
+
+resource "aws_iam_role_policy_attachment" "lambda_get_sqs_role_policy" {
+  role       = aws_iam_role.lambda_get_role.name
+  policy_arn = "arn:aws:iam::aws:policy/AmazonSQSFullAccess"
 }
 
 resource "aws_vpc_endpoint" "sqs_vpc_interface" {

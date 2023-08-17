@@ -2,6 +2,7 @@ import boto3
 import psycopg2
 import requests
 import os
+import json
 
 dbname = os.environ["db"]
 user = os.environ["user"]
@@ -18,25 +19,35 @@ port = int(os.environ["port"])
 def create_table_if_not_exists(conn):
     with conn.cursor() as cur:
         cur.execute("""
-                    CREATE TABLE IF NOT EXISTS workday (
-                        id VARCHAR(10) PRIMARY KEY,
-                        name TEXT
-                    )""")
+            CREATE TABLE IF NOT EXISTS workday (
+                id VARCHAR(10) PRIMARY KEY,
+                name TEXT
+            )
+            """)
         conn.commit()
 
-def query_api():
-    req = requests.get("https://jsonplaceholder.typicode.com/posts")
-    print(req.json())
+def update_or_insert_tuple(conn, data):
+    with conn.cursor() as cur:
+        cur.execute("""
+            INSERT INTO workday (id, name)
+            VALUES (%s, %s)
+            ON CONFLICT (id) DO UPDATE 
+                SET name = EXCLUDED.name
+            """,
+            (data['id'], data['name']))
+        conn.commit()
 
 def lambda_handler(event, context):
-    print("connecting...")
     conn = psycopg2.connect(dbname=dbname, user=user, password=password, host=host, port=port)
-    print("connected")
+
+    message = json.loads(event['Records'][0]['body'])
+    print("Message parsed : ", message)
 
     create_table_if_not_exists(conn)
     print("table created")
 
-    query_api()
+    update_or_insert_tuple(conn, message)
+    print("values inserted")
 
     conn.close()
     print("Done")
