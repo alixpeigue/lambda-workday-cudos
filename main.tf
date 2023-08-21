@@ -81,7 +81,7 @@ module "reciever_lambda" {
   vpc_security_group_ids = [module.vpc.default_security_group_id]
 
   environment_variables = {
-    secret = aws_db_instance.db.master_user_secret[0].secret_arn
+    secret = "fzef" # aws_db_instance.db.master_user_secret[0].secret_arn
     user   = aws_db_instance.db.username
     db     = aws_db_instance.db.db_name
     host   = aws_db_instance.db.address
@@ -115,7 +115,7 @@ module "emitter_lambda" {
 resource "aws_db_instance" "db" {
   identifier     = "workday-replication-db"
   engine         = "postgres"
-  engine_version = "14"
+  engine_version = "12"
   instance_class = "db.t3.micro"
 
   allocated_storage = "5"
@@ -123,6 +123,7 @@ resource "aws_db_instance" "db" {
   db_name  = "workdayReplicationDB"
   username = "postgres"
   port     = 5432
+  //password = "postgres"
 
   manage_master_user_password = true
 
@@ -140,13 +141,24 @@ resource "aws_db_subnet_group" "db_subnet_group" {
   name       = "workday-replication-db-subnet-group"
 }
 
-resource "aws_security_group_rule" "ingress_rule" {
+resource "aws_security_group_rule" "ingress_rule_lambda" {
   type              = "ingress"
   from_port         = 5432
   to_port           = 5432
   security_group_id = module.vpc.default_security_group_id
   self              = true
   protocol          = "TCP"
+  description       = "Lambda access"
+}
+
+resource "aws_security_group_rule" "ingress_rule_quicksight" {
+  type              = "ingress"
+  from_port         = 5432
+  to_port           = 5432
+  security_group_id = module.vpc.default_security_group_id
+  cidr_blocks       = ["13.38.202.0/27"] // TODO: change to paramerer
+  protocol          = "TCP"
+  description       = "Quicksight access"
 }
 
 resource "aws_security_group_rule" "egress_rule" {
@@ -225,31 +237,31 @@ resource "aws_iam_role" "vpc_connection_role" {
   }
 }
 
-resource "aws_quicksight_vpc_connection" "vpc_connection" {
-  vpc_connection_id  = "workday-rds-connection"
-  name               = "Workday RDS Connection"
-  role_arn           = aws_iam_role.vpc_connection_role.arn
-  security_group_ids = [module.vpc.default_security_group_id]
-  subnet_ids         = module.vpc.private_subnets
-}
-
-# resource "aws_secretsmanager_secret_policy" "secret_quicksight_policy" {
-#   secret_arn = aws_db_instance.db.master_user_secret[0].secret_arn
-
-#   policy = jsonencode({
-#     Version = "2012-10-17",
-#     Statement = [
-#       {
-#         Effect = "Allow",
-#         Principal = {
-#           AWS = "arn:aws:iam:::role/service-role/aws-quicksight-service-role-v0"
-#         },
-#         Action = "secretsmanager:GetSecretValue",
-#         Resource = ["*"]
-#       }
-#     ]
-#   })
+# resource "aws_quicksight_vpc_connection" "vpc_connection" {
+#   vpc_connection_id  = "workday-rds-connection"
+#   name               = "Workday RDS Connection"
+#   role_arn           = aws_iam_role.vpc_connection_role.arn
+#   security_group_ids = [module.vpc.default_security_group_id]
+#   subnet_ids         = module.vpc.private_subnets
 # }
+
+resource "aws_secretsmanager_secret_policy" "secret_quicksight_policy" {
+  secret_arn = aws_db_instance.db.master_user_secret[0].secret_arn
+
+  policy = jsonencode({
+    Version = "2012-10-17",
+    Statement = [
+      {
+        Effect = "Allow",
+        Principal = {
+          AWS = "arn:aws:iam::135225040694:role/service-role/aws-quicksight-service-role-v0"
+        },
+        Action = "secretsmanager:GetSecretValue",
+        Resource = ["*"]
+      }
+    ]
+  })
+}
 
 data "aws_caller_identity" "current" {}
 
@@ -257,10 +269,10 @@ data "aws_caller_identity" "current" {}
 resource "aws_cloudformation_stack" "quicksight_datasource" {
   name = "workday-rds-quicksight-datasource"
   parameters = {
-    VpcConnection = aws_quicksight_vpc_connection.vpc_connection.arn
-    Secret        = "arn:aws:secretsmanager:eu-west-3:135225040694:secret:rds!db-cc76f73e-9ba7-4ae4-907c-09ba18319064-rzHqDD"
+    VpcConnection = "arn:aws:quicksight:eu-west-3:135225040694:vpcConnection/workday-rds-connection" # aws_quicksight_vpc_connection.vpc_connection.arn
+    Secret        = aws_db_instance.db.master_user_secret[0].secret_arn
     Database      = aws_db_instance.db.db_name
-    Instance      = aws_db_instance.db.id
+    Instance      = aws_db_instance.db.identifier
     Account       = data.aws_caller_identity.current.account_id
   }
   template_body = <<EOT
@@ -268,34 +280,29 @@ resource "aws_cloudformation_stack" "quicksight_datasource" {
     Parameters:
       VpcConnection:
         Type: String
-        MaxLength: 255
       Secret:
         Type: String
-        MaxLength: 255
       Database:
         Type: String
-        MaxLength: 255
       Instance:
         Type: String
-        MaxLength: 255
       Account:
         Type: String
-        MaxLength: 255
     Resources:
-      QSDS21F86:
+      WorkdayDataSource:
         Type: 'AWS::QuickSight::DataSource'
         Properties:
-          AwsAccountId: 135225040694
+          AwsAccountId: !Ref Account
           VpcConnectionProperties:
-            VpcConnectionArn: 'arn:aws:quicksight:eu-west-3:135225040694:vpcConnection/workday-rds-connection'
+            VpcConnectionArn: !Ref VpcConnection
           Type: POSTGRESQL
           Credentials:
-            SecretArn: 'arn:aws:secretsmanager:eu-west-3:135225040694:secret:rds!db-cc76f73e-9ba7-4ae4-907c-09ba18319064-rzHqDD'
+            SecretArn: !Ref Secret
           Name: Workday RDS Source
-          DataSourceId: workday-rds-resource
+          DataSourceId: 'workday-rds-source'
           DataSourceParameters:
             RdsParameters:
-              Database: workdayReplicationDB
-              InstanceId: 'workday-replication-db'
+              Database: !Ref Database
+              InstanceId: !Ref Instance 
   EOT
 }
