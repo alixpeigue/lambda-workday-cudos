@@ -81,7 +81,7 @@ module "reciever_lambda" {
   vpc_security_group_ids = [module.vpc.default_security_group_id]
 
   environment_variables = {
-    secret = "fzef" # aws_db_instance.db.master_user_secret[0].secret_arn
+    secret = aws_db_instance.db.master_user_secret[0].secret_arn
     user   = aws_db_instance.db.username
     db     = aws_db_instance.db.db_name
     host   = aws_db_instance.db.address
@@ -256,7 +256,7 @@ resource "aws_secretsmanager_secret_policy" "secret_quicksight_policy" {
         Principal = {
           AWS = "arn:aws:iam::135225040694:role/service-role/aws-quicksight-service-role-v0"
         },
-        Action = "secretsmanager:GetSecretValue",
+        Action   = "secretsmanager:GetSecretValue",
         Resource = ["*"]
       }
     ]
