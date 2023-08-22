@@ -1,14 +1,17 @@
-import psycopg2
-import boto3
 import os
 import json
 import base64
 
+import psycopg2
+import boto3
+
+from botocore.exceptions import ClientError
+
 dbname = os.environ["db"]
-user = os.environ["user"]
 secret_name = os.environ["secret"]
 host = os.environ["host"]
 port = int(os.environ["port"])
+region = os.environ["region"]
 
 def create_table_if_not_exists(conn):
     with conn.cursor() as cur:
@@ -31,31 +34,40 @@ def update_or_insert_tuple(conn, data):
             (data['id'], data['name']))
         conn.commit()
 
-def get_rds_password():
-    client = boto3.client(
+def get_credentials():
+    print("1")
+    session = boto3.session.Session()
+    print("2")
+    client = session.client(
         service_name='secretsmanager',
-        region_name='eu-west-1'
+        region_name=region
     )
-    get_secret_value_response = client.get_secret_value(
-        SecretId=secret_name
-    )
+    print("3")
+    try:
+        print("4")
+        get_secret_value_response = client.get_secret_value(
+            SecretId=secret_name
+        )
+        print("5")
+    except ClientError as e:
+        # For a list of exceptions thrown, see
+        # https://docs.aws.amazon.com/secretsmanager/latest/apireference/API_GetSecretValue.html
+        raise e
+    print("6")
+    # Decrypts secret using the associated KMS key.
 
-    if 'SecretString' in get_secret_value_response:
-        secret = get_secret_value_response['SecretString']
-        j = json.loads(secret)
-        password = j['password']
-    else:
-        decoded_binary_secret = base64.b64decode(get_secret_value_response['SecretBinary'])
-        print("password binary:" + decoded_binary_secret)
-        password = decoded_binary_secret.password   
+    secret = json.loads(get_secret_value_response['SecretString'])
 
-    print("password:", password)
-
-    return password 
+    password = secret['password']
+    print("7")
+    username = secret['username']
+    print("8")
+    return password, username
 
 def lambda_handler(event, context):
     print("started lambda")
-    password = get_rds_password()
+    password, user = get_credentials()
+    print("Recieved credentials : ", password, user)
     message = json.loads(event['Records'][0]['body'])
     print("Message parsed : ", message)
 
