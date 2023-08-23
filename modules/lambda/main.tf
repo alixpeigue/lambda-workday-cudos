@@ -12,6 +12,12 @@ terraform {
   }
 }
 
+locals {
+  archive_file = "${var.archive_filename}.zip"
+  sources_hash = join("", [for script in var.scripts : filesha1(script)])
+  requirements_hash = var.requirements != null ? filesha1(var.requirements) : null
+}
+
 resource "local_file" "this" {
   for_each = toset(var.scripts)
 
@@ -22,8 +28,8 @@ resource "local_file" "this" {
 
 resource "null_resource" "makepkg" {
   triggers = {
-    requirements = var.requirements != null ? filesha1(var.requirements) : null
-    sources      = join("", [for script in var.scripts : filesha1(script)])
+    requirements = local.requirements_hash
+    sources      = local.sources_hash
   }
   provisioner "local-exec" {
     command = <<EOT
@@ -37,7 +43,7 @@ resource "null_resource" "makepkg" {
 data "archive_file" "this" {
   type        = "zip"
   source_dir  = var.archive_filename
-  output_path = "${var.archive_filename}.zip"
+  output_path = local.archive_file
   depends_on  = [local_file.this, null_resource.makepkg]
 }
 
@@ -55,6 +61,7 @@ resource "aws_lambda_function" "this" {
     variables = var.environment_variables
   }
   tags = var.tags
+  source_code_hash = data.archive_file.this.output_base64sha256
 }
 
 // Role
