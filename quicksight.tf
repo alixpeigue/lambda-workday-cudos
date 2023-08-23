@@ -90,6 +90,7 @@ resource "aws_cloudformation_stack" "quicksight_datasource" {
     Database      = aws_db_instance.db.db_name
     Instance      = aws_db_instance.db.identifier
     Account       = data.aws_caller_identity.current.account_id
+    Principal     = local.quicksight_group
   }
   template_body = <<EOT
     AWSTemplateFormatVersion: 2010-09-09
@@ -103,6 +104,8 @@ resource "aws_cloudformation_stack" "quicksight_datasource" {
       Instance:
         Type: String
       Account:
+        Type: String
+      Principal:
         Type: String
     Resources:
       WorkdayDataSource:
@@ -120,5 +123,50 @@ resource "aws_cloudformation_stack" "quicksight_datasource" {
             RdsParameters:
               Database: !Ref Database
               InstanceId: !Ref Instance 
+          Permissions:
+            - Actions:
+                - quicksight:DescribeDataSource
+                - quicksight:DescribeDataSourcePermissions
+                - quicksight:PassDataSource
+              Principal: !Ref Principal
+    Outputs:
+      DataSourceArn:
+        Value: !GetAtt WorkdayDataSource.Arn
   EOT
+}
+
+resource "aws_quicksight_data_set" "data_set" {
+  data_set_id = "workday-data-set"
+  name        = "workday-data-set"
+  import_mode = "DIRECT_QUERY"
+  physical_table_map {
+    physical_table_map_id = "workday-table"
+    relational_table {
+      data_source_arn = aws_cloudformation_stack.quicksight_datasource.outputs.DataSourceArn
+      name            = "workday"
+      input_columns {
+        name = "id"
+        type = "STRING"
+      }
+      input_columns {
+        name = "name"
+        type = "STRING"
+      }
+    }
+  }
+  permissions {
+    actions = [
+      "quicksight:DescribeDataSet",
+      "quicksight:DescribeDataSetPermissions",
+      "quicksight:PassDataSet",
+      "quicksight:UpdateDataSet",
+      "quicksight:DeleteDataSet",
+      "quicksight:UpdateDataSetPermissions",
+      "quicksight:DescribeIngestion",
+      "quicksight:ListIngestions",
+      "quicksight:CreateIngestion",
+      "quicksight:CancelIngestion",
+    ]
+    principal = local.quicksight_group
+  }
 }

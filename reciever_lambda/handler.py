@@ -66,7 +66,9 @@ def get_credentials():
 
 def lambda_handler(event, context):
     print("started lambda")
-    password, user = get_credentials()
+    # password, user = get_credentials()
+    password = "Y+Ut_Jcyi45B6|Fp_)+PDW?gZgz9"
+    user = "postgres"
     print("Recieved credentials : ", password, user)
     message = json.loads(event['Records'][0]['body'])
     print("Message parsed : ", message)

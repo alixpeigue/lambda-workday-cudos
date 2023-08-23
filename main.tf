@@ -11,6 +11,7 @@ locals {
   azs                            = slice(data.aws_availability_zones.available.names, 0, 3)
   region                         = "eu-west-3"
   quicksight_secretsmanager_role = "aws-quicksight-secretsmanager-role-v0"
+  quicksight_group               = "arn:aws:quicksight:eu-west-3:135225040694:group/default/Stagiaires"
 }
 
 // AWS :
