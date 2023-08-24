@@ -1,8 +1,9 @@
 import os
 import json
-import base64
+from typing import Any
 
 import psycopg2
+import psycopg2.extras
 import boto3
 
 from botocore.exceptions import ClientError
@@ -23,64 +24,38 @@ def create_table_if_not_exists(conn):
             """)
         conn.commit()
 
-def update_or_insert_tuple(conn, data):
+def update_or_insert_tuples(conn, data: list[tuple[str, str]]):
     with conn.cursor() as cur:
-        cur.execute("""
+        insert_query = """
             INSERT INTO workday (id, name)
-            VALUES (%s, %s)
+            VALUES %s
             ON CONFLICT (id) DO UPDATE 
                 SET name = EXCLUDED.name
-            """,
-            (data['id'], data['name']))
+        """
+        psycopg2.extras.execute_values(cur, insert_query, data)
         conn.commit()
 
-def get_credentials():
-    print("1")
-    session = boto3.session.Session()
-    print("2")
-    client = session.client(
-        service_name='secretsmanager',
-        region_name=region
-    )
-    print("3")
-    try:
-        print("4")
-        get_secret_value_response = client.get_secret_value(
-            SecretId=secret_name
-        )
-        print("5")
-    except ClientError as e:
-        # For a list of exceptions thrown, see
-        # https://docs.aws.amazon.com/secretsmanager/latest/apireference/API_GetSecretValue.html
-        raise e
-    print("6")
-    # Decrypts secret using the associated KMS key.
-
-    secret = json.loads(get_secret_value_response['SecretString'])
-
-    password = secret['password']
-    print("7")
-    username = secret['username']
-    print("8")
-    return password, username
+def get_table_contents(conn):
+    with conn.cursor() as cur:
+        cur.execute("SELECT * FROM workday")
+        return cur.fetchall()
 
 def lambda_handler(event, context):
-    print("started lambda")
-    # password, user = get_credentials()
-    password = "Y+Ut_Jcyi45B6|Fp_)+PDW?gZgz9"
-    user = "postgres"
-    print("Recieved credentials : ", password, user)
-    message = json.loads(event['Records'][0]['body'])
+    message: dict[str, Any] = json.loads(event['Records'][0]['body'])
     print("Message parsed : ", message)
-
+    credentials = message["secret"]
+    password, user = credentials["password"], credentials["username"]
     conn = psycopg2.connect(dbname=dbname, user=user, password=password, host=host, port=port)
     print("connected")
 
     create_table_if_not_exists(conn)
     print("table created")
 
-    update_or_insert_tuple(conn, message)
+    update_or_insert_tuples(conn, [(el['id'], el['name']) for el in message["data"]])
     print("values inserted")
+
+    table = get_table_contents(conn)
+    print("table : ", table)
 
     conn.close()
     print("Done")

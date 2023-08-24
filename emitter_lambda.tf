@@ -1,3 +1,16 @@
+data "aws_iam_policy_document" "access_secret_policy_document" {
+  statement {
+    effect    = "Allow"
+    actions   = ["secretsmanager:GetSecretValue"]
+    resources = [aws_db_instance.db.master_user_secret[0].secret_arn]
+  }
+}
+
+resource "aws_iam_policy" "access_secret_policy" {
+  name   = "workday-reciever-lambda-access-secret-policy"
+  policy = data.aws_iam_policy_document.access_secret_policy_document.json
+}
+
 module "emitter_lambda" {
   source = "./modules/lambda"
 
@@ -10,16 +23,19 @@ module "emitter_lambda" {
   archive_filename = "emitter_sources"
 
   policy_arns = [
+    aws_iam_policy.access_secret_policy.arn,
     "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole",
     "arn:aws:iam::aws:policy/AmazonSQSFullAccess"
   ]
 
   environment_variables = {
-    sqs = aws_sqs_queue.queue.url
+    sqs    = aws_sqs_queue.queue.url
+    secret = aws_db_instance.db.master_user_secret[0].secret_arn
+    region = local.region
   }
 }
 
-/// EvenBridge Event
+/// EvenBridge
 
 resource "aws_cloudwatch_event_rule" "workday_replication_lambda_event_rule" {
   name                = "daily-trigger-for-workday-replication"

@@ -1,6 +1,7 @@
 resource "aws_sqs_queue" "queue" {
   name                      = "worday-replication-queue"
   message_retention_seconds = 3600
+  sqs_managed_sse_enabled   = true
 }
 
 resource "aws_lambda_event_source_mapping" "event_source_mapping" {

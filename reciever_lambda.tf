@@ -17,19 +17,6 @@ resource "aws_iam_policy" "vpc_lambda_policy" {
   policy = data.aws_iam_policy_document.vpc_lambda_policy_document.json
 }
 
-data "aws_iam_policy_document" "access_secret_policy_document" {
-  statement {
-    effect    = "Allow"
-    actions   = ["secretsmanager:GetSecretValue"]
-    resources = [aws_db_instance.db.master_user_secret[0].secret_arn]
-  }
-}
-
-resource "aws_iam_policy" "access_secret_policy" {
-  name   = "workday-reciever-lambda-access-secret-policy"
-  policy = data.aws_iam_policy_document.access_secret_policy_document.json
-}
-
 // - Lambda
 
 module "reciever_lambda" {
@@ -45,7 +32,6 @@ module "reciever_lambda" {
 
   policy_arns = [
     aws_iam_policy.vpc_lambda_policy.arn,
-    aws_iam_policy.access_secret_policy.arn,
     "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole",
     "arn:aws:iam::aws:policy/service-role/AWSLambdaSQSQueueExecutionRole"
   ]
