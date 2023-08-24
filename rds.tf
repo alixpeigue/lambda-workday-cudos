@@ -9,7 +9,6 @@ resource "aws_db_instance" "db" {
   db_name  = "workdayReplicationDB"
   username = "postgres"
   port     = 5432
-  //password = "postgres"
 
   manage_master_user_password = true
 

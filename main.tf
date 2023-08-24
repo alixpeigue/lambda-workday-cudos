@@ -12,6 +12,7 @@ locals {
   region                         = "eu-west-3"
   quicksight_secretsmanager_role = "aws-quicksight-secretsmanager-role-v0"
   quicksight_group               = "arn:aws:quicksight:eu-west-3:135225040694:group/default/Stagiaires"
+  quicksight_region_cidr         = "13.38.202.0/27" // Cidr of the region whe re this is deployed, see https://docs.aws.amazon.com/quicksight/latest/user/regions.html
 }
 
 // AWS :

@@ -1,11 +1,9 @@
 import json
 import os
+from typing import Any, TypeAlias
 
 import boto3
 import requests
-
-from typing import Any, TypeAlias
-
 from botocore.exceptions import ClientError
 
 sqs_url = os.environ["sqs"]

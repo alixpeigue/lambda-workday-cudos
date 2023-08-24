@@ -18,7 +18,7 @@ resource "aws_security_group_rule" "ingress_rule_quicksight" {
   from_port         = 5432
   to_port           = 5432
   security_group_id = module.vpc.default_security_group_id
-  cidr_blocks       = ["13.38.202.0/27"] // TODO: change to paramerer
+  cidr_blocks       = [local.quicksight_region_cidr]
   protocol          = "TCP"
   description       = "Quicksight access"
 }
@@ -40,18 +40,4 @@ module "vpc" {
 
   azs             = local.azs
   private_subnets = [for k, v in local.azs : cidrsubnet(local.vpc_cidr, 4, k)]
-}
-
-resource "aws_vpc_endpoint" "secretsmanager" {
-  vpc_id            = module.vpc.vpc_id
-  service_name      = "com.amazonaws.${local.region}.secretsmanager"
-  vpc_endpoint_type = "Interface"
-
-  subnet_ids = module.vpc.private_subnets
-
-  security_group_ids = [
-    module.vpc.default_security_group_id,
-  ]
-
-  private_dns_enabled = true
 }

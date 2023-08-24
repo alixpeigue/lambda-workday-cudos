@@ -1,15 +1,11 @@
-import os
 import json
+import os
 from typing import Any
 
 import psycopg2
 import psycopg2.extras
-import boto3
 
-from botocore.exceptions import ClientError
-
-dbname = os.environ["db"]
-secret_name = os.environ["secret"]
+dbname = os.environ["dbname"]
 host = os.environ["host"]
 port = int(os.environ["port"])
 region = os.environ["region"]

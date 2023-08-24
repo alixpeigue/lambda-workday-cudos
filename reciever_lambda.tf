@@ -40,9 +40,7 @@ module "reciever_lambda" {
   vpc_security_group_ids = [module.vpc.default_security_group_id]
 
   environment_variables = {
-    secret = aws_db_instance.db.master_user_secret[0].secret_arn
-    user   = aws_db_instance.db.username
-    db     = aws_db_instance.db.db_name
+    dbname = aws_db_instance.db.db_name
     host   = aws_db_instance.db.address
     port   = aws_db_instance.db.port
     region = local.region
