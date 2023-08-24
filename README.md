@@ -71,7 +71,7 @@ Les informations fournies à la fonction par les variables d'environnement sont 
 - port: le port utilisé
 - region: la région AWS
 
-Le schméma de la table créée est :
+Le schéma de la table créée est :
 ```sql
 CREATE TABLE IF NOT EXISTS workday (
     ProjectID VARCHAR(10) PRIMARY KEY,
@@ -79,18 +79,19 @@ CREATE TABLE IF NOT EXISTS workday (
 )
 ```
 
-### Base de données PostgresSQL sur RDS
+### Base de données PostgreSQL sur RDS
 
 On déploie une base PostgreSQL sur RDS pour stocker les données répliquées de Workday. Les information de connexion à cette base sont stockées dans un secret Secrets Manager.
 
 ## Quicksight
 
-Afin de pouvoir accéder aux données stockées dans cette base, la script déploie les resources suivantes :
+Afin de pouvoir accéder aux données stockées dans cette base, le script déploie les resources suivantes :
 - Une connexion VPC
 - Une data source
+- Un data set
 
 ## A faire
 
-Actuellement, la lambda emitter (voir [Lambda émettrice](#lambda-émettrice)) ne contacte pas l'API Workday mais une API mockup de test. Il faut donc mettre en palce les appels à cette API, ainsi que gérer de manière sécurisée les clés d'accès à l'API Workday.
+Actuellement, la lambda emitter (voir [Lambda émettrice](#lambda-émettrice)) ne contacte pas l'API Workday mais une API mockup de test. Il faut donc mettre en place les appels à la véritable API, ainsi que gérer de manière sécurisée les tokens et/ou identifiants Workday.
 
-La [lambda réceptrice](#lambda-réceptrice) récupère les données dans la SQS et les place dans la base de données, mais ne fait aucune validation des données. Il fut donc mettre en place un système de validations des données recues afin de s'assurer de la bonne communication entre les deux fonctions lambda.
+La [lambda réceptrice](#lambda-réceptrice) récupère les données dans la SQS et les place dans la base de données, mais ne fait aucune validation des données. Il faut donc mettre en place un système de validation des données reçues afin de s'assurer de la bonne communication entre les deux fonctions lambda.
