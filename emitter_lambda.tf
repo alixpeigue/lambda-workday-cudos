@@ -13,6 +13,8 @@ resource "aws_iam_policy" "access_secret_policy" {
   policy = data.aws_iam_policy_document.access_secret_policy_document.json
 }
 
+// Lambda
+
 module "emitter_lambda" {
   source = "./modules/lambda"
 
@@ -37,7 +39,7 @@ module "emitter_lambda" {
   }
 }
 
-/// EvenBridge
+/// EvenBridge, trigger lambde every 24 hours
 
 resource "aws_cloudwatch_event_rule" "workday_replication_lambda_event_rule" {
   name                = "daily-trigger-for-workday-replication"

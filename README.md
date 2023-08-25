@@ -31,8 +31,8 @@ L'objectif de cette architecture est de compléter les dashboards CUDOS en appor
 ### Lambda émettrice
 
 Cette fonction lambda est déclenchée toutes les 24 heures. Son but est de contacter l'api de Workday pour obtenir les informations sur tous les projets gérés par workday. Les informations que l'on souhaite obtenir pour chaque projet sont :
-- project name
-- project owner
+- name
+- owner
 - community
 - company
     
@@ -52,7 +52,7 @@ Le JSON placé dans la SQS doit suivre le schéma suivant :
     },
     "data": [
         {
-            "projectID": "myProjectID",
+            "id": "myProjectID",
             "owner": "myProjectOwner"
             ...
         },

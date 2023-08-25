@@ -30,11 +30,19 @@ def get_credentials(secret: str, region: str) -> dict[str, str]:
     # Decrypts secret using the associated KMS key.
     return json.loads(get_secret_value_response['SecretString'])
 
-def get_data() -> list[dict[str, str]]:
+def get_data() -> list[dict[str, str|None]]:
     req = requests.get("https://dummyjson.com/products")
     response = req.json()
     print(response)
-    return [{"id": el["id"], "name": el["title"]} for el in response["products"][:10]]
+    return [
+        {
+            "id": str(el["id"]), 
+            "name": el["title"], 
+            "owner": "owner@mail.com",
+            "company": None,
+            "community": "tech.ops"
+        } for el in response["products"][:10]
+    ]
 
 def send_message(sqs_url: str, message: dict[str, Any]) -> None :
     print(message)
@@ -52,5 +60,5 @@ def lambda_handler(event, context):
     print("got data")
     send_message(sqs_url, {
         "data": data,
-        "secret": credentials
+        "credentials": credentials
     })
