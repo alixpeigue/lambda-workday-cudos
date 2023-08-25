@@ -1,14 +1,17 @@
 resource "aws_sqs_queue" "queue" {
   name                      = "worday-replication-queue"
   message_retention_seconds = 3600
-  sqs_managed_sse_enabled   = true
+  sqs_managed_sse_enabled   = true // Encrypted because queue contains credentials
 }
 
+// Mapping sqs -> reviever lambda
 resource "aws_lambda_event_source_mapping" "event_source_mapping" {
   event_source_arn = aws_sqs_queue.queue.arn
   function_name    = module.reciever_lambda.function_name
 }
 
+
+// Allow queue to be accessed vrom VPC
 resource "aws_vpc_endpoint" "sqs_vpc_interface" {
   vpc_id             = module.vpc.vpc_id
   vpc_endpoint_type  = "Interface"

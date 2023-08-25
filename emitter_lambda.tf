@@ -1,3 +1,5 @@
+// Allow lambda to access Secrets Manager secret for db credentials
+
 data "aws_iam_policy_document" "access_secret_policy_document" {
   statement {
     effect    = "Allow"

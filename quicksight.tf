@@ -1,3 +1,5 @@
+// Role for quicksight to connect to VPC
+
 resource "aws_iam_role" "vpc_connection_role" {
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
@@ -32,6 +34,8 @@ resource "aws_iam_role" "vpc_connection_role" {
   }
 }
 
+// allow quicksight to access secrets manager
+
 resource "aws_iam_policy" "access_secretsmanager_policy" {
   name = "QuicksightReadOnlyAccessForSecretMAnagerRDSWorkdayReplication"
   policy = jsonencode({
@@ -54,6 +58,8 @@ resource "aws_iam_role_policy_attachment" "access_secretsmanager" {
   role       = local.quicksight_secretsmanager_role
   policy_arn = aws_iam_policy.access_secretsmanager_policy.arn
 }
+
+// VPC connection to the RDS end reviever lambda VPC to access RDS data
 
 resource "aws_quicksight_vpc_connection" "vpc_connection" {
   vpc_connection_id  = "workday-rds-connection"
@@ -81,7 +87,7 @@ resource "aws_secretsmanager_secret_policy" "secret_quicksight_policy" {
   })
 }
 
-# We use cloudformation because terraform cannot use a secret as credentials for a QuickSight Data Source
+// We use cloudformation because terraform cannot use a secret as credentials for a QuickSight Data Source
 resource "aws_cloudformation_stack" "quicksight_datasource" {
   name = "workday-rds-quicksight-datasource"
   parameters = {

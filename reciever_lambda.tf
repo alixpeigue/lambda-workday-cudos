@@ -1,3 +1,5 @@
+// Allow lambda to access VPC resources
+
 data "aws_iam_policy_document" "vpc_lambda_policy_document" {
   statement {
     effect = "Allow"
@@ -17,7 +19,7 @@ resource "aws_iam_policy" "vpc_lambda_policy" {
   policy = data.aws_iam_policy_document.vpc_lambda_policy_document.json
 }
 
-// - Lambda
+// Lambda
 
 module "reciever_lambda" {
   source = "./modules/lambda"
