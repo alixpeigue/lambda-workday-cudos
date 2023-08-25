@@ -11,14 +11,14 @@ Les paramètres modifiables sont regroupées dans les locals du [main.tf](main.t
 - **azs**: Les zones de disponibilité dans lesquelles déployer le VPC
 - **region**: la région de déploiement
 - **quicksight_secretsmanager_role**: le rôle avec lequel est configuré quicksight pour accéder aux informations de connexion de la base de données
-- **quicksight_group**: l'ARN du groupe quicksight qui seraz autorisé à accéder à la Data Source et au Data Set créés
+- **quicksight_group**: l'ARN du groupe quicksight qui sera autorisé à accéder à la Data Source et au Data Set créés
 - **quicksight_region_cidr**: le CIDR de quicksight pour la région de déploiement (voir [AWS Regions, websites, IP address ranges, and endpoints](https://docs.aws.amazon.com/quicksight/latest/user/regions.html))
 
 ### Commandes
 
  - Découvrir et récupérer les modules `terraform get`
  - Initialiser terraform `terraform init`
- - Déployer `terraform apply` le premier apply peut ne pas marcher, dans ce cas, appliquer une seconde fois.
+ - Déployer `terraform apply` le premier apply peut ne pas marcher, dans ce cas appliquer une seconde fois.
 
 ## Architecture
 
@@ -26,15 +26,15 @@ Ce script déploie l'architecture suivante :
 
 ![alt Schéma d'architecture](assets/architecture.jpg?raw=true "Architecture")
 
-L'objectif de cette architecture est de compléter les dashboards CUDOS en apportant des informations issues de Workday dans le dashboard. Ce script déploie ces ressources :
+L'objectif de cette architecture est de compléter les dashboards CUDOS en apportant des informations issues de Workday dans le dashboard.
 
 ### Lambda émettrice
 
 Cette fonction lambda est déclenchée toutes les 24 heures. Son but est de contacter l'api de Workday pour obtenir les informations sur tous les projets gérés par workday. Les informations que l'on souhaite obtenir pour chaque projet sont :
-- project_name
-- project_owner
+- project name
+- project owner
 - community
-- client
+- company
     
 La fonction doit aussi récupérer les informations de connexion à la base de donnée RDS (username et mot de passe) dans un secret Secrets Manager. Ces informations sont ensuites envoyées dans une sqs au format JSON
 
@@ -63,7 +63,7 @@ Le JSON placé dans la SQS doit suivre le schéma suivant :
 
 ### Lambda réceptrice
 
-Le rôle de cette fonction est de récupérer les données placées dans la queue par la [fonction émettrice](#lambda-émettrice) et de les palcer dans la base de données. Elle crée aussi la table si celle-ci n'est pas encore créée.
+Le rôle de cette fonction est de récupérer les données placées dans la queue par la [fonction émettrice](#lambda-émettrice) et de les placer dans la base de données. Elle crée aussi la table si celle-ci n'est pas encore créée.
 
 Les informations fournies à la fonction par les variables d'environnement sont :
 - dbname: le nom de la base de données
@@ -74,8 +74,11 @@ Les informations fournies à la fonction par les variables d'environnement sont 
 Le schéma de la table créée est :
 ```sql
 CREATE TABLE IF NOT EXISTS workday (
-    ProjectID VARCHAR(10) PRIMARY KEY,
-    name TEXT
+    id VARCHAR(15) PRIMARY KEY,
+    name TEXT,
+    owner TEXT,
+    community TEXT,
+    company TEXT
 )
 ```
 
@@ -83,12 +86,12 @@ CREATE TABLE IF NOT EXISTS workday (
 
 On déploie une base PostgreSQL sur RDS pour stocker les données répliquées de Workday. Les information de connexion à cette base sont stockées dans un secret Secrets Manager.
 
-## Quicksight
+### Quicksight
 
 Afin de pouvoir accéder aux données stockées dans cette base, le script déploie les resources suivantes :
-- Une connexion VPC
-- Une data source
-- Un data set
+- Une connexion VPC au VPC de la db
+- Une data source qui utilise le RDS
+- Un data set qui spécifie l'utilisation de la table `workday`
 
 ## A faire
 
