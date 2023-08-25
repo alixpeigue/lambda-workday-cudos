@@ -18,6 +18,7 @@ locals {
   requirements_hash = var.requirements != null ? filesha1(var.requirements) : null
 }
 
+// Copy source files to archive directory
 resource "local_file" "this" {
   for_each = toset(var.scripts)
 
@@ -26,6 +27,7 @@ resource "local_file" "this" {
   depends_on     = [null_resource.makepkg]
 }
 
+// Create directory and install dependencies
 resource "null_resource" "makepkg" {
   triggers = {
     requirements = local.requirements_hash
@@ -40,6 +42,7 @@ resource "null_resource" "makepkg" {
   }
 }
 
+// Compress directory containing source files ans dependencies
 data "archive_file" "this" {
   type        = "zip"
   source_dir  = var.archive_filename
@@ -64,8 +67,7 @@ resource "aws_lambda_function" "this" {
   source_code_hash = data.archive_file.this.output_base64sha256
 }
 
-// Role
-
+// Execution role
 data "aws_iam_policy_document" "changerole_lambda_policy" {
   statement {
     effect = "Allow"
