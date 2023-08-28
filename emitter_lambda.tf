@@ -13,6 +13,25 @@ resource "aws_iam_policy" "access_secret_policy" {
   policy = data.aws_iam_policy_document.access_secret_policy_document.json
 }
 
+// Allow to access SQS
+
+data "aws_iam_policy_document" "sqs_emitter_lambda_policy_document" {
+  statement {
+    effect = "Allow"
+    actions = [
+      "sqs:*"
+    ]
+    resources = [
+      aws_sqs_queue.queue.arn
+    ]
+  }
+}
+
+resource "aws_iam_policy" "sqs_emitter_lambda_policy" {
+  name   = "sqs-iam-policy-for-workday-cudos-emitter-lambda"
+  policy = data.aws_iam_policy_document.sqs_emitter_lambda_policy_document.json
+}
+
 // Lambda
 
 module "emitter_lambda" {
@@ -29,7 +48,7 @@ module "emitter_lambda" {
   policy_arns = [
     aws_iam_policy.access_secret_policy.arn,
     "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole",
-    "arn:aws:iam::aws:policy/AmazonSQSFullAccess"
+    aws_iam_policy.sqs_emitter_lambda_policy.arn
   ]
 
   environment_variables = {

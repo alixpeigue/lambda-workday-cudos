@@ -15,8 +15,32 @@ data "aws_iam_policy_document" "vpc_lambda_policy_document" {
 }
 
 resource "aws_iam_policy" "vpc_lambda_policy" {
-  name   = "limited-vpc-iam-policy-for-workday-cudos-update-lambda"
+  name   = "vpc-iam-policy-for-workday-cudos-receiver-lambda"
   policy = data.aws_iam_policy_document.vpc_lambda_policy_document.json
+}
+
+// Allow access to SQS
+
+data "aws_iam_policy_document" "sqs_receiver_lambda_policy_document" {
+  statement {
+    effect = "Allow"
+    actions = [
+      "sqs:ReceiveMessage",
+      "sqs:DeleteMessage",
+      "sqs:GetQueueAttributes",
+      "logs:CreateLogGroup",
+      "logs:CreateLogStream",
+      "logs:PutLogEvents"
+    ]
+    resources = [
+      aws_sqs_queue.queue.arn
+    ]
+  }
+}
+
+resource "aws_iam_policy" "sqs_receiver_lambda_policy" {
+  name   = "sqs-iam-policy-for-workday-cudos-receiver-lambda"
+  policy = data.aws_iam_policy_document.sqs_receiver_lambda_policy_document.json
 }
 
 // Lambda
@@ -35,7 +59,7 @@ module "receiver_lambda" {
   policy_arns = [
     aws_iam_policy.vpc_lambda_policy.arn,
     "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole",
-    "arn:aws:iam::aws:policy/service-role/AWSLambdaSQSQueueExecutionRole"
+    aws_iam_policy.sqs_receiver_lambda_policy.arn
   ]
 
   vpc_subnet_ids         = module.vpc.private_subnets

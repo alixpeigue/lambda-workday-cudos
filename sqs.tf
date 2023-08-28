@@ -8,6 +8,7 @@ resource "aws_sqs_queue" "queue" {
 resource "aws_lambda_event_source_mapping" "event_source_mapping" {
   event_source_arn = aws_sqs_queue.queue.arn
   function_name    = module.receiver_lambda.function_name
+  depends_on       = [module.receiver_lambda.aws_lambda_function]
 }
 
 
