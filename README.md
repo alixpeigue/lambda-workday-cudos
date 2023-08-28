@@ -95,6 +95,11 @@ Afin de pouvoir accéder aux données stockées dans cette base, le script dépl
 
 ## A faire
 
-Actuellement, la lambda emitter (voir [Lambda émettrice](#lambda-émettrice)) ne contacte pas l'API Workday mais une API mockup de test. Il faut donc mettre en place les appels à la véritable API, ainsi que gérer de manière sécurisée les tokens et/ou identifiants Workday.
+- Actuellement, la lambda emitter (voir [Lambda émettrice](#lambda-émettrice)) ne contacte pas l'API Workday mais une API mockup de test. Il faut donc mettre en place les appels à la véritable API, ainsi que gérer de manière sécurisée les tokens et/ou identifiants Workday.
 
-La [lambda réceptrice](#lambda-réceptrice) récupère les données dans la SQS et les place dans la base de données, mais ne fait aucune validation des données. Il faut donc mettre en place un système de validation des données reçues afin de s'assurer de la bonne communication entre les deux fonctions lambda.
+- La [lambda réceptrice](#lambda-réceptrice) récupère les données dans la SQS et les place dans la base de données, mais ne fait aucune validation des données. Il faut donc mettre en place un système de validation des données reçues afin de s'assurer de la bonne communication entre les deux fonctions lambda.
+
+## Bugs connus
+
+- Erreur `Error: creating Lambda Event Source Mapping (arn:aws:sqs:eu-west-3:135225040694:worday-replication-queue): InvalidParameterValueException: Function does not exist` au premier apply -> appliquer une seconde fois
+- Impossible de destroy la vpc connection dans quicksight puis de la recréer tout de suite après, celle-ci met plusieurs heures à se supprimer -> changer le `vpc_connection_id`
