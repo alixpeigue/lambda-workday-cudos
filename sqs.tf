@@ -7,7 +7,7 @@ resource "aws_sqs_queue" "queue" {
 // Mapping sqs -> reviever lambda
 resource "aws_lambda_event_source_mapping" "event_source_mapping" {
   event_source_arn = aws_sqs_queue.queue.arn
-  function_name    = module.reciever_lambda.function_name
+  function_name    = module.receiver_lambda.function_name
 }
 
 

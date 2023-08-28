@@ -41,7 +41,7 @@ terraform.rc
 
 # Package folders
 **/emitter_sources/*
-**/reciever_sources/*
+**/receiver_sources/*
 
 #Archives
 **/*.zip

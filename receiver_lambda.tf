@@ -21,16 +21,16 @@ resource "aws_iam_policy" "vpc_lambda_policy" {
 
 // Lambda
 
-module "reciever_lambda" {
+module "receiver_lambda" {
   source = "./modules/lambda"
 
-  function_name = "workday-cudos-replication-reciever-lambda"
+  function_name = "workday-cudos-replication-receiver-lambda"
 
-  requirements     = "reciever_lambda/requirements.txt"
-  scripts          = ["reciever_lambda/handler.py"]
+  requirements     = "receiver_lambda/requirements.txt"
+  scripts          = ["receiver_lambda/handler.py"]
   handler          = "handler.lambda_handler"
   runtime          = "python3.10"
-  archive_filename = "reciever_sources"
+  archive_filename = "receiver_sources"
 
   policy_arns = [
     aws_iam_policy.vpc_lambda_policy.arn,

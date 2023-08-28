@@ -9,7 +9,7 @@ data "aws_iam_policy_document" "access_secret_policy_document" {
 }
 
 resource "aws_iam_policy" "access_secret_policy" {
-  name   = "workday-reciever-lambda-access-secret-policy"
+  name   = "workday-emitter-lambda-access-secret-policy"
   policy = data.aws_iam_policy_document.access_secret_policy_document.json
 }
 
