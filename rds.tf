@@ -2,7 +2,7 @@ resource "aws_db_instance" "db" {
   identifier     = "workday-replication-db"
   engine         = "postgres"
   engine_version = "12"
-  instance_class = "db.t3.micro"
+  instance_class = var.db_instance_class
 
   allocated_storage = "5"
 

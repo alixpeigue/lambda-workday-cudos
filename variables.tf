@@ -18,3 +18,8 @@ variable "quicksight_group" {
   description = "l'ARN du groupe quicksight qui sera autorisé à accéder à la Data Source et au Data Set créés"
   type        = string
 }
+
+variable "db_instance_class" {
+  description = "instance class of the database"
+  type = string
+}
