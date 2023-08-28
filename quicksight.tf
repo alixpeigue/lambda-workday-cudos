@@ -55,7 +55,7 @@ resource "aws_iam_policy" "access_secretsmanager_policy" {
 }
 
 resource "aws_iam_role_policy_attachment" "access_secretsmanager" {
-  role       = local.quicksight_secretsmanager_role
+  role       = var.quicksight_secretsmanager_role
   policy_arn = aws_iam_policy.access_secretsmanager_policy.arn
 }
 
@@ -78,7 +78,7 @@ resource "aws_secretsmanager_secret_policy" "secret_quicksight_policy" {
       {
         Effect = "Allow",
         Principal = {
-          AWS = "arn:aws:iam::${data.aws_caller_identity.current.account_id}:role/service-role/${local.quicksight_secretsmanager_role}"
+          AWS = "arn:aws:iam::${data.aws_caller_identity.current.account_id}:role/service-role/${var.quicksight_secretsmanager_role}"
         },
         Action   = "secretsmanager:GetSecretValue",
         Resource = ["*"]
@@ -96,7 +96,7 @@ resource "aws_cloudformation_stack" "quicksight_datasource" {
     Database      = aws_db_instance.db.db_name
     Instance      = aws_db_instance.db.identifier
     Account       = data.aws_caller_identity.current.account_id
-    Principal     = local.quicksight_group
+    Principal     = var.quicksight_group
   }
   template_body = <<EOT
     AWSTemplateFormatVersion: 2010-09-09
@@ -173,6 +173,6 @@ resource "aws_quicksight_data_set" "data_set" {
       "quicksight:CreateIngestion",
       "quicksight:CancelIngestion",
     ]
-    principal = local.quicksight_group
+    principal = var.quicksight_group
   }
 }

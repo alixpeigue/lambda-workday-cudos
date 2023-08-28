@@ -69,6 +69,6 @@ module "receiver_lambda" {
     dbname = aws_db_instance.db.db_name
     host   = aws_db_instance.db.address
     port   = aws_db_instance.db.port
-    region = local.region
+    region = var.region
   }
 }

@@ -7,7 +7,7 @@
 ### Paramétrer le déploiement
 
 Les paramètres modifiables sont regroupées dans les locals du [main.tf](main.tf) :
-- **vpc_cidr**: le CIDR de VPC dans lequel seront placées la base de données et la fonction réceptrice (voir [Architecture](#architecture))
+- **vpc_cidr**: le CIDR du VPC dans lequel seront placées la base de données et la fonction réceptrice (voir [Architecture](#architecture))
 - **azs**: Les zones de disponibilité dans lesquelles déployer le VPC
 - **region**: la région de déploiement
 - **quicksight_secretsmanager_role**: le rôle avec lequel est configuré quicksight pour accéder aux informations de connexion de la base de données

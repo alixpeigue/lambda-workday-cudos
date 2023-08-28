@@ -39,9 +39,9 @@ resource "aws_security_group_rule" "egress_rule" {
 module "vpc" {
   source = "terraform-aws-modules/vpc/aws"
 
-  cidr = local.vpc_cidr
+  cidr = var.vpc_cidr
   name = "workday-replication-vpc"
 
   azs             = local.azs
-  private_subnets = [for k, v in local.azs : cidrsubnet(local.vpc_cidr, 4, k)]
+  private_subnets = [for k, v in local.azs : cidrsubnet(var.vpc_cidr, 4, k)]
 }

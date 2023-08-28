@@ -54,7 +54,7 @@ module "emitter_lambda" {
   environment_variables = {
     sqs    = aws_sqs_queue.queue.url
     secret = aws_db_instance.db.master_user_secret[0].secret_arn
-    region = local.region
+    region = var.region
   }
 }
 
