@@ -16,9 +16,34 @@ Les paramètres modifiables sont regroupées dans les locals du [main.tf](main.t
 
 ### Commandes
 
- - Découvrir et récupérer les modules `terraform get`
- - Initialiser terraform `terraform init`
- - Déployer `terraform apply` le premier apply peut ne pas marcher, dans ce cas appliquer une seconde fois.
+- Découvrir et récupérer les modules `terraform get`
+- Initialiser terraform `terraform init`
+- Déployer `terraform apply` le premier apply peut ne pas marcher, dans ce cas appliquer une seconde fois.
+
+### Vérifier que le déploiement à bien fonctionné
+
+- Le deploy terraform n'a pas fait d'erreurs
+- Dans la console, se rendre sur la lambda `workday-cudos-replication-emitter-lambda`
+- Dans tester, cliquer sur tester, l'exécution de la fonction doit réussir
+- Se rendre dans les logs de la lambda `workday-cudos-replication-receiver-lambda`
+- Vérifier qu'un flux de journal daté de l'heure de lancement de la fonction émettrice est présent. Ses contenus devraient contenir :
+  - "Data parsed : [Project(id="1", ...), ...]
+  - connected
+  - table created
+  - values inserted
+  - table : ***Les données correspondant à la ligne data parsed sous la forme de tuples liste de tuples [(id, ...), ... ]***
+  - Done !
+- Se rendre sur quicksight avec un compte ayant accès aux data sources (dans le groupe donné en paramètres)
+  - créer une nouvelle analyse
+  - vérifier que l'on peut choisir workday-data-set
+  - cliquer sur use in analysis, puis create
+  - vérifier que la fields list correspond bien aux champs suivants :
+    - id
+    - name
+    - owner
+    - community
+    - company
+  - vous pouvez vérifier qui les données sont bien présentes en insrant par exemple un tableau
 
 ## Architecture
 
