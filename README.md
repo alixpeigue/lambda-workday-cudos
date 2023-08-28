@@ -124,6 +124,8 @@ Afin de pouvoir accéder aux données stockées dans cette base, le script dépl
 
 - La [lambda réceptrice](#lambda-réceptrice) récupère les données dans la SQS et les place dans la base de données, mais ne fait aucune validation des données. Il faut donc mettre en place un système de validation des données reçues afin de s'assurer de la bonne communication entre les deux fonctions lambda.
 
+- Pour des raisons de coût, il a été décidé de ne pas mettre un 2e VPC endpoint pour que la lambda réceptrice accède à secrets manager, mais de transmettre les credentials dans la queue depuis la lambda émettrice. La queue est chiffrée, mais cela reste une mauvaise pratique de transmettre des informations sensibles par SQS. Ainsi, on pourrait mettre en place un VPC Endpoint pour Secrets Manager dans le VPC pour éviter une telle transmission. S'il est critique de réduire les coûts, il serait possible de mettre en place un système qui crée les endpoints pour SQS et Secrets Manager à la demande, quand la fonction émettrice est invoquée, et qui détruirait ces resources après leur utilisation.
+
 ## Bugs connus
 
 - Erreur `Error: creating Lambda Event Source Mapping (arn:aws:sqs:eu-west-3:135225040694:worday-replication-queue): InvalidParameterValueException: Function does not exist` au premier apply -> appliquer une seconde fois
